@@ -22,3 +22,8 @@ google_region = {
   single = "us-west2"
   multi  = "US"
 }
+
+kube_cluster_prefix         = "gke-devops"
+kube_cluster_version        = "1.15"
+kube_nodepool_disk_size     = "50"
+kube_nodepool_instance_type = "n1-standard-2"

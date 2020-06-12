@@ -85,8 +85,13 @@ module "public_ip" {
 module "kubernetes" {
   source = "../"
 
-  google_project_name    = "${var.google_project_base}-${random_id.project_id.hex}"
-  google_region          = var.google_region
-  google_compute_network = module.vpc-networking.google_compute_network_name
-  local_public_ip        = module.public_ip.public_ip
+  google_project_name         = "${var.google_project_base}-${random_id.project_id.hex}"
+  google_region               = var.google_region
+  google_compute_network      = module.vpc-networking.google_compute_network_name
+  local_public_ip             = module.public_ip.public_ip
+  kube_cluster_prefix         = var.kube_cluster_prefix
+  kube_cluster_version        = var.kube_cluster_version
+  kube_nodepool_disk_size     = var.kube_nodepool_disk_size
+  kube_nodepool_instance_type = var.kube_nodepool_instance_type
 }
+

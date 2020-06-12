@@ -1,11 +1,37 @@
 ### Terraform Resources
 
+
+# Setting local variables for the sake of reusability of resouces described below
+locals {
+  kube_cluster_name = "${var.kube_cluster_prefix}"
+}
+
+
+
+# Enabled Google APIs
+resource "google_project_service" "compute" {
+  service            = "compute.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "container" {
+  depends_on = [
+    google_project_service.compute
+  ]
+
+  service            = "container.googleapis.com"
+  disable_on_destroy = false
+}
+
+
+
+# Networking Resources
 resource "google_compute_subnetwork" "kubernetes" {
   depends_on = [
     google_project_service.compute
   ]
 
-  name                     = "kubernetes"
+  name                     = "${local.kube_cluster_name}-subnet"
   network                  = var.google_compute_network
   region                   = var.google_region["single"]
   ip_cidr_range            = "10.100.160.0/19"
@@ -43,12 +69,11 @@ resource "google_compute_firewall" "allow-ssh-kubernetes" {
 
 
 
-
+# Service Account + IAM Binding
 resource "google_service_account" "kubernetes-service-account" {
-  account_id   = "gke-service-account"
-  display_name = "Kubernetes Service Account"
+  account_id   = "${local.kube_cluster_name}-svc-acct"
+  display_name = "Kubernetes ${local.kube_cluster_name} Service Account"
 }
-
 
 
 resource "google_project_iam_member" "kubernetes-service-account-editor" {
@@ -57,14 +82,8 @@ resource "google_project_iam_member" "kubernetes-service-account-editor" {
 }
 
 
-# Setting local variables for the sake of reusability of resouces described below
-locals {
-  kubernetes_version = "1.15"
-  instance-type      = "n1-standard-2"
-}
 
-
-### Resource Collection
+# Resource Collection
 
 data "google_compute_zones" "available" {
   depends_on = [
@@ -75,9 +94,7 @@ data "google_compute_zones" "available" {
   region   = var.google_region["single"]
 }
 
-
 data "google_client_openid_userinfo" "provider_identity" {}
-
 
 data "google_service_account_access_token" "kubernetes_sa" {
   target_service_account = data.google_client_openid_userinfo.provider_identity.email
@@ -87,25 +104,8 @@ data "google_service_account_access_token" "kubernetes_sa" {
 
 
 
-### Create Kubernetes Resources
+# Kubernetes Cluster
 
-resource "google_project_service" "compute" {
-  service            = "compute.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_project_service" "container" {
-  depends_on = [
-    google_project_service.compute
-  ]
-
-  service            = "container.googleapis.com"
-  disable_on_destroy = false
-}
-
-
-
-# Create Kubernetes Cluster
 resource "google_container_cluster" "kubernetes-cluster" {
   depends_on = [
     google_project_iam_member.kubernetes-service-account-editor,
@@ -113,7 +113,7 @@ resource "google_container_cluster" "kubernetes-cluster" {
   ]
   provider = google-beta
 
-  name     = "kubernetes-cluster"
+  name     = "${local.kube_cluster_name}-cluster"
   location = var.google_region["single"]
   node_locations = [
     "${data.google_compute_zones.available.names[0]}",
@@ -121,8 +121,8 @@ resource "google_container_cluster" "kubernetes-cluster" {
     "${data.google_compute_zones.available.names[2]}"
   ]
 
-  min_master_version = local.kubernetes_version
-  node_version       = local.kubernetes_version
+  min_master_version = var.kube_cluster_version
+  node_version       = var.kube_cluster_version
 
   network    = var.google_compute_network
   subnetwork = google_compute_subnetwork.kubernetes.name
@@ -137,8 +137,8 @@ resource "google_container_cluster" "kubernetes-cluster" {
   node_config {
     tags         = ["kubernetes"]
     preemptible  = true
-    machine_type = local.instance-type
-    disk_size_gb = 50
+    machine_type = var.kube_nodepool_instance_type
+    disk_size_gb = var.kube_nodepool_disk_size
     oauth_scopes = [
       "cloud-platform"
     ]
@@ -205,28 +205,22 @@ resource "google_container_cluster" "kubernetes-cluster" {
 }
 
 
-# Create Kubernetes Node Pool
+# Kubernetes NodePool
 resource "google_container_node_pool" "node-pool-a" {
-  depends_on = [
-    google_project_iam_member.kubernetes-service-account-editor,
-    google_project_service.container,
-    google_compute_subnetwork.kubernetes,
-    data.google_compute_zones.available
-  ]
   provider = google-beta
 
   cluster  = google_container_cluster.kubernetes-cluster.name
-  name     = "k8s-node-pool-${local.instance-type}-a"
+  name     = "${local.kube_cluster_name}-nodepool-a"
   location = var.google_region["single"]
 
-  version            = local.kubernetes_version
+  version            = var.kube_cluster_version
   initial_node_count = 1
 
   node_config {
     tags         = ["kubernetes"]
     preemptible  = true
-    machine_type = local.instance-type
-    disk_size_gb = 50
+    machine_type = var.kube_nodepool_instance_type
+    disk_size_gb = var.kube_nodepool_disk_size
     oauth_scopes = [
       "cloud-platform"
     ]

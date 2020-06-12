@@ -30,3 +30,20 @@ variable "google_region" {
     multi  = "US"
   }
 }
+
+variable "kube_cluster_prefix" {
+  description = "Cluster Prefix Name"
+}
+
+variable "kube_cluster_version" {
+  description = "GKE Cluster Kubernetes Version"
+}
+
+variable "kube_nodepool_disk_size" {
+  description = "GKE NodePool Disk Size"
+}
+
+variable "kube_nodepool_instance_type" {
+  description = "GKE NodePool Instance Type"
+  default     = "n1-standard-2"
+}
