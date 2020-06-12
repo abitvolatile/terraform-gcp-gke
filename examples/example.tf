@@ -94,4 +94,3 @@ module "kubernetes" {
   kube_nodepool_disk_size     = var.kube_nodepool_disk_size
   kube_nodepool_instance_type = var.kube_nodepool_instance_type
 }
-
