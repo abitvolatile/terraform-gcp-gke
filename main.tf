@@ -210,7 +210,7 @@ resource "google_container_node_pool" "node-pool-a" {
   provider = google-beta
 
   cluster  = google_container_cluster.kubernetes-cluster.name
-  name     = "${local.kube_cluster_name}-nodepool-a"
+  name     = "nodepool-a"
   location = var.google_region["single"]
 
   version            = var.kube_cluster_version
